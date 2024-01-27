@@ -5,7 +5,7 @@
 2. 支持400KHz快速模式
 3. 支持GD32F30x平台和STM32F10x平台
 
-【移植步骤】】
+【移植步骤】
 1. 将 bsp_soft_i2c.c, bsp_soft_i2c.h, bsp_soft_i2c_private.h 文件添加到工程中
 2. GD工程需要有全局宏 GD32F30X_HD 或 GD32F30X_XD 或 GD32F30X_CL
 3. STM工程需要有全局宏 STM32F10X_HD 或 STM32F10X_MD 或 STM32F10X_CL 以及 USE_STDPERIPH_DRIVER
