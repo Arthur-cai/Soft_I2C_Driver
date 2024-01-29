@@ -25,8 +25,7 @@
  * @return void 
  */
 SOFT_I2C_STATIC_INLINE void soft_i2c_gpio_clk_enable(P_SOFT_I2C_GPIO_COMM_T p_gpio) {
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD) || \
-    defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#if defined(SOFT_I2C_GD32F3_USED) || defined(SOFT_I2C_STM32F1_USED)
     SOFT_I2C_ENABLE_GPIO_CLK(p_gpio->gpioClk);
 #else
     return;
@@ -45,10 +44,10 @@ SOFT_I2C_STATIC_INLINE void soft_i2c_gpio_clk_enable(P_SOFT_I2C_GPIO_COMM_T p_gp
  * @endcode
  */
 static void soft_i2c_set_od_mode(P_SOFT_I2C_GPIO_COMM_T p_gpio) {
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD)
+#if defined(SOFT_I2C_GD32F3_USED)
     // GD32F30x芯片
     gpio_init(p_gpio->gpioPort, GPIO_MODE_OUT_OD, GPIO_OSPEED_50MHZ, p_gpio->gpioPin);
-#elif defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#elif defined(SOFT_I2C_STM32F1_USED)
     // STM32F10x芯片
     GPIO_InitTypeDef initStruct;
     initStruct.GPIO_Pin = (uint16_t)p_gpio->gpioPin;
@@ -71,8 +70,7 @@ static void soft_i2c_set_od_mode(P_SOFT_I2C_GPIO_COMM_T p_gpio) {
  * @return void 
  */
 SOFT_I2C_STATIC_INLINE void soft_i2c_write_gpio(P_SOFT_I2C_GPIO_COMM_T p_gpio, uint8_t val) {
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD) || \
-    defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#if defined(SOFT_I2C_GD32F3_USED) || defined(SOFT_I2C_STM32F1_USED)
     if (val) {
         SOFT_I2C_SET_PIN(p_gpio->gpioPort, p_gpio->gpioPin);
     } else {
@@ -92,8 +90,7 @@ SOFT_I2C_STATIC_INLINE void soft_i2c_write_gpio(P_SOFT_I2C_GPIO_COMM_T p_gpio, u
  *  @retval 0 低电平, 1 高电平
  */
 SOFT_I2C_STATIC_INLINE uint8_t soft_i2c_read_gpio(P_SOFT_I2C_GPIO_COMM_T p_gpio) {
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD) || \
-    defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#if defined(SOFT_I2C_GD32F3_USED) || defined(SOFT_I2C_STM32F1_USED)
     return (SOFT_I2C_READ_PIN(p_gpio->gpioPort, p_gpio->gpioPin)) ? 1 : 0;
 #else
     return 0xFF;
@@ -119,17 +116,19 @@ static void soft_i2c_delay_us(void) {
  */
 static void soft_i2c_delay_800ns(void) {
     uint32_t i = 0;
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD)
+#if defined(SOFT_I2C_GD32F3_USED)
     uint32_t j = 0;
     for (i = 0; i < 2; i++) {
         for (j = 0; j < (SOFT_I2C_DELAY_CYCLE * 4) / 5; j++) {
             __asm("NOP");
         }
     }
-#elif defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#elif defined(SOFT_I2C_STM32F1_USED)
     for (i = 0; i < 2; i++) {
         __asm("NOP");
     }
+#else
+    return;
 #endif
 }
 #pragma pop
@@ -196,7 +195,7 @@ static soft_i2c_err_t soft_i2c_stop(P_SOFT_I2C_T p_i2c) {
     soft_i2c_delay_us();
     soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_HIGH);
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
-    uint32_t waitCnt = 0xFFF;   ///< 等待计数
+    uint32_t waitCnt = SOFT_I2C_WAIT_CNT;   ///< 等待计数
     SOFT_I2C_WAIT_SCL_RELEASE(p_i2c, waitCnt); // 等待SCL释放
     if (waitCnt == 0) {
         return SOFT_I2C_ERR_TIMEOUT;
@@ -221,7 +220,7 @@ static soft_i2c_err_t soft_i2c_stop(P_SOFT_I2C_T p_i2c) {
  * @endcode
  */
 static soft_i2c_err_t soft_i2c_wait_ack(P_SOFT_I2C_T p_i2c) {
-    uint32_t waitCnt = 0xFFF;   ///< 等待计数
+    uint32_t waitCnt = SOFT_I2C_WAIT_CNT;   ///< 等待计数
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH); // 开启线与
     soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_HIGH); // 拉起SCL
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
@@ -282,8 +281,8 @@ static void soft_i2c_ack_respond(P_SOFT_I2C_T p_i2c, uint8_t ackVal) {
 static soft_i2c_err_t soft_i2c_send_byte(P_SOFT_I2C_T p_i2c, uint8_t byte) {
     uint8_t  loopCnt    = 0;      ///< 循环计数
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
-    uint32_t waitCnt    = 0xFFF;  ///< 等待计数
-    bool     isFirstBit = true;   ///< 是否第一位
+    uint32_t waitCnt    = SOFT_I2C_WAIT_CNT;  ///< 等待计数
+    bool     isFirstBit = true;               ///< 是否第一位
 #endif
     for (loopCnt = 0; loopCnt < 8; loopCnt++) {
         soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_GET_MSB_BIT(byte));   // 写入数据
@@ -323,8 +322,8 @@ static soft_i2c_err_t soft_i2c_send_byte(P_SOFT_I2C_T p_i2c, uint8_t byte) {
 static soft_i2c_err_t soft_i2c_read_byte(P_SOFT_I2C_T p_i2c, uint8_t *p_data) {
     uint8_t  loopCnt    = 0;      ///< 循环计数
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
-    uint32_t waitCnt    = 0xFFF;  ///< 等待计数
-    bool     isFirstBit = true;   ///< 是否第一位
+    uint32_t waitCnt    = SOFT_I2C_WAIT_CNT;  ///< 等待计数
+    bool     isFirstBit = true;               ///< 是否第一位
 #endif
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH); // 开启线与
     for (loopCnt = 0; loopCnt < 8; loopCnt++) {
@@ -450,8 +449,7 @@ soft_i2c_err_t soft_i2c_init(P_SOFT_I2C_T p_i2c) {
         return SOFT_I2C_ERR_PARAM;
     }
     // 2. 初始化结构体内监控变量
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD) || \
-    defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#if defined(SOFT_I2C_GD32F3_USED) || defined(SOFT_I2C_STM32F1_USED)
     p_i2c->isValid = true;  // 芯片有效
 #else
     p_i2c->isValid = false; // 芯片无效
@@ -491,7 +489,8 @@ soft_i2c_err_t soft_i2c_init(P_SOFT_I2C_T p_i2c) {
  * @endcode
  */
 soft_i2c_err_t soft_i2c_write(P_SOFT_I2C_T p_i2c, uint32_t slaveAddr, uint32_t regAddr, uint32_t regAddrLen, uint8_t *p_data, uint32_t dataLen) {
-    if (p_i2c == NULL || p_data == NULL || p_i2c->isValid == false || p_i2c->isInit == false || dataLen == 0) {
+    if (p_i2c == NULL || p_data == NULL || p_i2c->isValid == false || p_i2c->isInit == false || \
+        dataLen == 0 || regAddrLen < SOFT_I2C_REG_ADDR_LEN_1 || regAddrLen > SOFT_I2C_REG_ADDR_LEN_2) {
         return SOFT_I2C_ERR_PARAM;
     }
     SOFT_I2C_DEF_MSG(w_msg, slaveAddr, regAddr, regAddrLen, p_data, dataLen, SOFT_I2C_WRITE);
@@ -517,7 +516,8 @@ soft_i2c_err_t soft_i2c_write(P_SOFT_I2C_T p_i2c, uint32_t slaveAddr, uint32_t r
  * @endcode
  */
 soft_i2c_err_t soft_i2c_read(P_SOFT_I2C_T p_i2c, uint32_t slaveAddr, uint32_t regAddr, uint32_t regAddrLen, uint8_t *p_data, uint32_t dataLen) {
-    if (p_i2c == NULL || p_data == NULL || p_i2c->isValid == false || p_i2c->isInit == false || dataLen == 0) {
+    if (p_i2c == NULL || p_data == NULL || p_i2c->isValid == false || p_i2c->isInit == false || \
+        dataLen == 0 || regAddrLen < SOFT_I2C_REG_ADDR_LEN_1 || regAddrLen > SOFT_I2C_REG_ADDR_LEN_2) {
         return SOFT_I2C_ERR_PARAM;
     }
     SOFT_I2C_DEF_MSG(r_msg, slaveAddr, regAddr, regAddrLen, p_data, dataLen, SOFT_I2C_READ);

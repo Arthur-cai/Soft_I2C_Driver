@@ -22,17 +22,9 @@
  * @addtogroup SOFT_I2C_COMM_DEF
  * @{
  */
-#define SOFT_I2C_SET_PIN(port, pin)     \
-        (*(volatile uint32_t *)(uint32_t)((port) + 0x10U)) = (uint32_t)(pin)
-#define SOFT_I2C_RESET_PIN(port, pin)   \
-        (*(volatile uint32_t *)(uint32_t)((port) + 0x14U)) = (uint32_t)(pin)
-#define SOFT_I2C_READ_PIN(port, pin)    \
-        (*(volatile uint32_t *)(uint32_t)((port) + 0x08U)) & (uint32_t)(pin)
-#define SOFT_I2C_ENABLE_GPIO_CLK(gpioClk)   \
-        (*(volatile uint32_t *)(uint32_t)(0x40021000U + 0x18U)) |= (uint32_t)(gpioClk)
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD)
+#if defined(SOFT_I2C_GD32F3_USED)
 #define SOFT_I2C_DELAY_CYCLE     (10U)                  ///< 延时周期数
-#elif defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#elif defined(SOFT_I2C_STM32F1_USED)
 #define SOFT_I2C_DELAY_CYCLE     (1U)                   ///< 延时周期数
 #else
 #define SOFT_I2C_DELAY_CYCLE     (1U)                   ///< 延时周期数
@@ -43,22 +35,65 @@
 #define SOFT_I2C_NACK            SOFT_I2C_LEVEL_HIGH    ///< I2C非应答信号(高电平)
 #define SOFT_I2C_WRITE           (0U)                   ///< 写操作
 #define SOFT_I2C_READ            (1U)                   ///< 读操作
-#define SOFT_I2C_REG_ADDR_LEN_1  (1U)                   ///< 1字节寄存器地址长度
-#define SOFT_I2C_REG_ADDR_LEN_2  (2U)                   ///< 2字节寄存器地址长度
+#define SOFT_I2C_WAIT_CNT        (0xFFFU)               ///< 等待计数(用于时钟延展)
 /*
  * @}
 */
+
+/**
+ * @brief 软件模拟 I2C 引脚置高
+ *
+ * @param [in]  port         端口
+ * @param [in]  pin          引脚
+ */
+#define SOFT_I2C_SET_PIN(port, pin)     \
+        (*(volatile uint32_t *)(uint32_t)((port) + 0x10U)) = (uint32_t)(pin)
+
+/**
+ * @brief 软件模拟 I2C 引脚置低
+ * 
+ * @param [in]  port         端口
+ * @param [in]  pin          引脚
+ */
+#define SOFT_I2C_RESET_PIN(port, pin)   \
+        (*(volatile uint32_t *)(uint32_t)((port) + 0x14U)) = (uint32_t)(pin)
+
+/**
+ * @brief 软件模拟 I2C 读引脚输入电平
+ * 
+ * @param [in]  port         端口
+ * @param [in]  pin          引脚
+ */
+#define SOFT_I2C_READ_PIN(port, pin)    \
+        (*(volatile uint32_t *)(uint32_t)((port) + 0x08U)) & (uint32_t)(pin)
+
+/**
+ * @brief 软件模拟 I2C 使能引脚时钟
+ * 
+ * @param [in]  gpioClk      引脚时钟 @ref SOFT_I2C_GPIO_CLK_E
+ */
+#define SOFT_I2C_ENABLE_GPIO_CLK(gpioClk)   \
+        (*(volatile uint32_t *)(uint32_t)(0x40021000U + 0x18U)) |= (uint32_t)(gpioClk)
 
 /**
  * @brief 软件模拟 I2C 位操作
  * @addtogroup SOFT_I2C_BIT_OPERATION
  * @{
 */
-#define SOFT_I2C_GET_MSB_BIT(data)   (((data) >> 7) & 0x01)    ///< 获取最高位
-#define SOFT_I2C_GET_LOW_BYTE(data)  (uint8_t)((data) & 0xFF)  ///< 获取低字节
-/*
- * @}
-*/
+
+/**
+ * @brief 软件模拟 I2C 获取最高位
+ *
+ * @param [in]  data         数据
+ */
+#define SOFT_I2C_GET_MSB_BIT(data)   (((data) >> 7) & 0x01)
+
+/**
+ * @brief 软件模拟 I2C 获取最低字节
+ *
+ * @param [in]  data         数据
+ */
+#define SOFT_I2C_GET_LOW_BYTE(data)  (uint8_t)((data) & 0xFF)
 
 /**
  * @brief 软件模拟 I2C 等待 SCL 释放

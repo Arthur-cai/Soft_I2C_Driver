@@ -17,11 +17,17 @@
 
 /* 根据不同的芯片包含不同的文件 */
 #if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD)
-#include "gd32f30x.h"
+#define SOFT_I2C_GD32F3_USED        ///< 使用GD32F3芯片
 #elif defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
-#include "stm32f10x.h"
+#define SOFT_I2C_STM32F1_USED       ///< 使用STM32F1芯片
 #else
 #error "Please select the target chip model!"
+#endif
+
+#if defined(SOFT_I2C_GD32F3_USED)
+#include "gd32f30x.h"
+#elif defined(SOFT_I2C_STM32F1_USED)
+#include "stm32f10x.h"
 #endif
 #include <stddef.h>
 #include <stdint.h>
@@ -33,6 +39,8 @@
 #define SOFT_I2C_STATIC_INLINE   static __inline        ///< 静态内联函数
 #elif defined(__GNUC__)
 #define SOFT_I2C_STATIC_INLINE   static inline          ///< 静态内联函数
+#else
+#define SOFT_I2C_STATIC_INLINE
 #endif
 
 /**
@@ -56,14 +64,29 @@ typedef uint32_t                       soft_i2c_err_t;  ///< 返回值类型
 */
 
 /**
+ * @brief 软件模拟 I2C 寄存器地址长度
+ * @addtogroup SOFT_I2C_REG_ADDR_LEN
+ * @{
+ */
+#define SOFT_I2C_REG_ADDR_LEN_1        (1U)             ///< 1字节寄存器地址长度
+#define SOFT_I2C_REG_ADDR_LEN_2        (2U)             ///< 2字节寄存器地址长度
+/**
+ * @}
+ */
+
+#if defined(SOFT_I2C_GD32F3_USED) || defined(SOFT_I2C_STM32F1_USED)
+/**
  * @brief 软件模拟 I2C 外部声明
  *
  * @param [in]  name        I2C结构体名称
  */
 #define SOFT_I2C_EXT(name)  \
         extern void *const name
+#else
+#define SOFT_I2C_EXT(name)
+#endif
 
-#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD)
+#if defined(SOFT_I2C_GD32F3_USED)
 /**
  * @brief 软件模拟 I2C 定义结构体
  *
@@ -80,8 +103,9 @@ typedef uint32_t                       soft_i2c_err_t;  ///< 返回值类型
             {GPIO##sda_port, GPIO_PIN_##sda_pin, SOFT_I2C_GPIO##sda_port##_CLK}, \
             SOFT_I2C_IDLE                                                        \
         };                                                                       \
-        void *const name = &soft_i2c_##name
-#elif defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+        void *const name = &soft_i2c_##name                                      \
+
+#elif defined(SOFT_I2C_STM32F1_USED)
 /**
  * @brief 软件模拟 I2C 定义结构体
  *
@@ -98,7 +122,10 @@ typedef uint32_t                       soft_i2c_err_t;  ///< 返回值类型
             {GPIO##sda_port##_BASE, GPIO_Pin_##sda_pin, SOFT_I2C_GPIO##sda_port##_CLK}, \
             SOFT_I2C_IDLE                                                               \
         };                                                                              \
-        void *const name = &soft_i2c_##name
+        void *const name = &soft_i2c_##name                                             \
+
+#else
+#define SOFT_I2C_DEF(name, scl_port, scl_pin, sda_port, sda_pin)
 #endif
 
 #ifdef __cplusplus
