@@ -17,6 +17,15 @@
 
 #include <stdint.h>
 
+/* 根据不同的芯片包含不同的文件 */
+#if defined(GD32F30X_HD) || defined(GD32F30X_CL) || defined(GD32F30X_XD)
+#define SOFT_I2C_GD32F3_USED        ///< 使用GD32F3芯片
+#elif defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
+#define SOFT_I2C_STM32F1_USED       ///< 使用STM32F1芯片
+#else
+#error "Please define GD32F30X_XX or STM32F10X_XX"
+#endif
+
 /**
  * @brief 软件模拟 I2C 通用宏定义
  * @addtogroup SOFT_I2C_COMM_DEF

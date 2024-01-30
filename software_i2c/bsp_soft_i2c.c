@@ -327,6 +327,7 @@ static soft_i2c_err_t soft_i2c_read_byte(P_SOFT_I2C_T p_i2c, uint8_t *p_data) {
 #endif
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH); // 开启线与
     for (loopCnt = 0; loopCnt < 8; loopCnt++) {
+        soft_i2c_delay_us();
         *p_data <<= 1;
         soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_HIGH);  // 拉起SCL
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
@@ -341,9 +342,9 @@ static soft_i2c_err_t soft_i2c_read_byte(P_SOFT_I2C_T p_i2c, uint8_t *p_data) {
         *p_data |= soft_i2c_read_gpio(&p_i2c->sda); // 读取数据
         soft_i2c_delay_800ns();
         soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_LOW);   // 拉低SCL
-        soft_i2c_delay_us();
     }
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_LOW);   // 关闭线与
+    soft_i2c_delay_800ns();
     return SOFT_I2C_ERR_OK;
 }
 

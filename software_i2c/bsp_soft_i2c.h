@@ -21,7 +21,7 @@
 #elif defined(STM32F10X_HD) || defined(STM32F10X_MD) || defined(STM32F10X_CL)
 #define SOFT_I2C_STM32F1_USED       ///< 使用STM32F1芯片
 #else
-#error "Please select the target chip model!"
+#error "Please define GD32F30X_XX or STM32F10X_XX"
 #endif
 
 #if defined(SOFT_I2C_GD32F3_USED)
