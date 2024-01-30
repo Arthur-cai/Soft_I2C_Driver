@@ -85,12 +85,6 @@
         (*(volatile uint32_t *)(uint32_t)(0x40021000U + 0x18U)) |= (uint32_t)(gpioClk)
 
 /**
- * @brief 软件模拟 I2C 位操作
- * @addtogroup SOFT_I2C_BIT_OPERATION
- * @{
-*/
-
-/**
  * @brief 软件模拟 I2C 获取最高位
  *
  * @param [in]  data         数据
