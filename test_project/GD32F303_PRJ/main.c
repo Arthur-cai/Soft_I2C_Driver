@@ -38,7 +38,7 @@ int main(void) {
     led_on();
 
     // 初始化结构体对象
-    ret = soft_i2c_init(I2C_DEV);
+    ret = soft_i2c_init(I2C_DEV, SOFT_I2C_DEFAULT_WAITCNT);
 
     while (1) {
         /* turn on LED1 */

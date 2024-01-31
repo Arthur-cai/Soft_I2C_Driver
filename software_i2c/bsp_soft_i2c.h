@@ -64,6 +64,16 @@ typedef uint32_t                       soft_i2c_err_t;  ///< 返回值类型
 */
 
 /**
+ * @brief 软件模拟 I2C 默认超时计数
+ * @addtogroup SOFT_I2C_WAITCNT
+ * @{
+ */
+#define SOFT_I2C_DEFAULT_WAITCNT       (0xFFFFU)        ///< 默认超时计数
+/**
+ * @}
+ */
+
+/**
  * @brief 软件模拟 I2C 寄存器地址长度
  * @addtogroup SOFT_I2C_REG_ADDR_LEN
  * @{
@@ -87,6 +97,26 @@ typedef uint32_t                       soft_i2c_err_t;  ///< 返回值类型
 #endif
 
 #if defined(SOFT_I2C_GD32F3_USED)
+#if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
+/**
+ * @brief 软件模拟 I2C 定义结构体
+ *
+ * @param [in]  name        I2C结构体名称
+ * @param [in]  scl_port    时钟线端口, A ~ G
+ * @param [in]  scl_pin     时钟线引脚, 0 ~ 15
+ * @param [in]  sda_port    数据线端口, A ~ G
+ * @param [in]  sda_pin     数据线引脚, 0 ~ 15
+ */
+#define SOFT_I2C_DEF(name, scl_port, scl_pin, sda_port, sda_pin)                 \
+        SOFT_I2C_T soft_i2c_##name = {                                           \
+            false, false, SOFT_I2C_DEFAULT_WAITCNT,                              \
+            {GPIO##scl_port, GPIO_PIN_##scl_pin, SOFT_I2C_GPIO##scl_port##_CLK}, \
+            {GPIO##sda_port, GPIO_PIN_##sda_pin, SOFT_I2C_GPIO##sda_port##_CLK}, \
+            SOFT_I2C_IDLE                                                        \
+        };                                                                       \
+        void *const name = &soft_i2c_##name                                      \
+
+#else
 /**
  * @brief 软件模拟 I2C 定义结构体
  *
@@ -105,7 +135,28 @@ typedef uint32_t                       soft_i2c_err_t;  ///< 返回值类型
         };                                                                       \
         void *const name = &soft_i2c_##name                                      \
 
+#endif
 #elif defined(SOFT_I2C_STM32F1_USED)
+#if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
+/**
+ * @brief 软件模拟 I2C 定义结构体
+ *
+ * @param [in]  name        I2C结构体名称
+ * @param [in]  scl_port    时钟线端口, A ~ G
+ * @param [in]  scl_pin     时钟线引脚, 0 ~ 15
+ * @param [in]  sda_port    数据线端口, A ~ G
+ * @param [in]  sda_pin     数据线引脚, 0 ~ 15
+ */
+#define SOFT_I2C_DEF(name, scl_port, scl_pin, sda_port, sda_pin)                        \
+        SOFT_I2C_T soft_i2c_##name = {                                                  \
+            false, false, SOFT_I2C_DEFAULT_WAITCNT,                                     \
+            {GPIO##scl_port##_BASE, GPIO_Pin_##scl_pin, SOFT_I2C_GPIO##scl_port##_CLK}, \
+            {GPIO##sda_port##_BASE, GPIO_Pin_##sda_pin, SOFT_I2C_GPIO##sda_port##_CLK}, \
+            SOFT_I2C_IDLE                                                               \
+        };                                                                              \
+        void *const name = &soft_i2c_##name                                             \
+
+#else
 /**
  * @brief 软件模拟 I2C 定义结构体
  *
@@ -124,6 +175,7 @@ typedef uint32_t                       soft_i2c_err_t;  ///< 返回值类型
         };                                                                              \
         void *const name = &soft_i2c_##name                                             \
 
+#endif
 #else
 #define SOFT_I2C_DEF(name, scl_port, scl_pin, sda_port, sda_pin)
 #endif
@@ -172,6 +224,9 @@ typedef struct _SOFT_I2C_GPIO_COMM_T {
 typedef struct _SOFT_I2C_T {
     bool                 isValid; ///< 芯片是否有效
     bool                 isInit;  ///< 是否初始化
+#if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
+    uint32_t             waitCnt; ///< 超时计数(时钟延展使用)
+#endif
     SOFT_I2C_GPIO_COMM_T scl;     ///< 时钟线
     SOFT_I2C_GPIO_COMM_T sda;     ///< 数据线
     SOFT_I2C_STA_E       i2cSta;  ///< I2C监控状态
@@ -203,16 +258,30 @@ SOFT_I2C_STATIC_INLINE SOFT_I2C_STA_E soft_i2c_get_sta(P_SOFT_I2C_T p_i2c) {
  * @brief 软件模拟 I2C 初始化
  * 
  * @param [in] p_i2c         I2C结构体指针
+ * @param [in] waitCnt       超时计数(时钟延展使能时有意义)
  * 
  * @return uint32_t
  *  @retval 0 成功, 其他值 失败 @ref SOFT_I2C_ERR_CODE
  * @details 特殊说明: 
  * @par eg:
  * @code
- *    
+ *    // 注册I2C驱动
+ *    SOFT_I2C_DEF(I2C_DEV, A, 8, A, 9);
+ * 
+ *    // 如果跨文件注册, 则需要在其头文件中声明驱动, 并在使用驱动的文件中包含其头文件
+ *    SOFT_I2C_EXT(I2C_DEV);
+ * 
+ *    // 开启时钟延展初始化时, 设置延展的超时计数为1000, 该传参会修改默认计数值
+ *    soft_i2c_init(I2C_DEV, 1000);
+ * 
+ *    // 开启时钟延展初始化时, 如果第二个传参为 SOFT_I2C_DEFAULT_WAITCNT, 则不会修改默认计数值
+ *    soft_i2c_init(I2C_DEV, SOFT_I2C_DEFAULT_WAITCNT);
+ * 
+ *    // 未开启时钟延展时, 传参waitCnt不会起作用
+ *    soft_i2c_init(I2C_DEV, 1000);
  * @endcode
  */
-extern soft_i2c_err_t soft_i2c_init(P_SOFT_I2C_T p_i2c);
+extern soft_i2c_err_t soft_i2c_init(P_SOFT_I2C_T p_i2c, uint32_t waitCnt);
 
 /**
  * @brief 软件模拟 I2C 写数据

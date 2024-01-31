@@ -71,13 +71,14 @@ int main(void) {
     led_init();
     led_on();
 
-    ret = soft_i2c_init(I2C_DEV);
+    ret = soft_i2c_init(I2C_DEV, SOFT_I2C_DEFAULT_WAITCNT);
 
     while (1) {
         led_on();
         block_delay();
         {
             memset(r_buf, 0, 8);
+
             if (flag) {
                 ret = soft_i2c_write(I2C_DEV, SLAVE_ADDR, REG_ADDR, 1, w_buf, 8);
                 // if (ret != SOFT_I2C_ERR_OK) {

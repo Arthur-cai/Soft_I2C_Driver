@@ -45,10 +45,8 @@ SOFT_I2C_STATIC_INLINE void soft_i2c_gpio_clk_enable(P_SOFT_I2C_GPIO_COMM_T p_gp
  */
 static void soft_i2c_set_od_mode(P_SOFT_I2C_GPIO_COMM_T p_gpio) {
 #if defined(SOFT_I2C_GD32F3_USED)
-    // GD32F30x芯片
     gpio_init(p_gpio->gpioPort, GPIO_MODE_OUT_OD, GPIO_OSPEED_50MHZ, p_gpio->gpioPin);
 #elif defined(SOFT_I2C_STM32F1_USED)
-    // STM32F10x芯片
     GPIO_InitTypeDef initStruct;
     initStruct.GPIO_Pin = (uint16_t)p_gpio->gpioPin;
     initStruct.GPIO_Mode = GPIO_Mode_Out_OD;
@@ -170,6 +168,10 @@ static void soft_i2c_start(P_SOFT_I2C_T p_i2c) {
     soft_i2c_delay_800ns();
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH);
     soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_HIGH);
+#if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
+    uint32_t waitCnt = p_i2c->waitCnt;   ///< 等待计数
+    SOFT_I2C_WAIT_SCL_RELEASE(p_i2c, waitCnt); // 等待SCL释放
+#endif
     soft_i2c_delay_us();
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_LOW);
     soft_i2c_delay_us();
@@ -181,29 +183,23 @@ static void soft_i2c_start(P_SOFT_I2C_T p_i2c) {
  * 
  * @param [in] p_i2c         I2C结构体指针
  * 
- * @return soft_i2c_err_t 
- *  @retval 0 成功, 其他值 失败 @ref SOFT_I2C_ERR_CODE
  * @details 特殊说明: 
  * @par eg:
  * @code
  *    
  * @endcode
  */
-static soft_i2c_err_t soft_i2c_stop(P_SOFT_I2C_T p_i2c) {
+static void soft_i2c_stop(P_SOFT_I2C_T p_i2c) {
     soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_LOW);
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_LOW);
     soft_i2c_delay_us();
     soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_HIGH);
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
-    uint32_t waitCnt = SOFT_I2C_WAIT_CNT;   ///< 等待计数
+    uint32_t waitCnt = p_i2c->waitCnt;   ///< 等待计数
     SOFT_I2C_WAIT_SCL_RELEASE(p_i2c, waitCnt); // 等待SCL释放
-    if (waitCnt == 0) {
-        return SOFT_I2C_ERR_TIMEOUT;
-    }
 #endif
     soft_i2c_delay_us();
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH);
-    return SOFT_I2C_ERR_OK;
 }
 
 /**
@@ -220,10 +216,11 @@ static soft_i2c_err_t soft_i2c_stop(P_SOFT_I2C_T p_i2c) {
  * @endcode
  */
 static soft_i2c_err_t soft_i2c_wait_ack(P_SOFT_I2C_T p_i2c) {
-    uint32_t waitCnt = SOFT_I2C_WAIT_CNT;   ///< 等待计数
+    uint32_t waitCnt = 100;
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH); // 开启线与
     soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_HIGH); // 拉起SCL
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
+    waitCnt = p_i2c->waitCnt;   ///< 等待计数
     SOFT_I2C_WAIT_SCL_RELEASE(p_i2c, waitCnt); // 等待SCL释放
     if (waitCnt == 0) {
         return SOFT_I2C_ERR_TIMEOUT;
@@ -281,8 +278,8 @@ static void soft_i2c_ack_respond(P_SOFT_I2C_T p_i2c, uint8_t ackVal) {
 static soft_i2c_err_t soft_i2c_send_byte(P_SOFT_I2C_T p_i2c, uint8_t byte) {
     uint8_t  loopCnt    = 0;      ///< 循环计数
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
-    uint32_t waitCnt    = SOFT_I2C_WAIT_CNT;  ///< 等待计数
-    bool     isFirstBit = true;               ///< 是否第一位
+    uint32_t waitCnt    = p_i2c->waitCnt;  ///< 等待计数
+    bool     isFirstBit = true;            ///< 是否第一位
 #endif
     for (loopCnt = 0; loopCnt < 8; loopCnt++) {
         soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_GET_MSB_BIT(byte));   // 写入数据
@@ -322,8 +319,8 @@ static soft_i2c_err_t soft_i2c_send_byte(P_SOFT_I2C_T p_i2c, uint8_t byte) {
 static soft_i2c_err_t soft_i2c_read_byte(P_SOFT_I2C_T p_i2c, uint8_t *p_data) {
     uint8_t  loopCnt    = 0;      ///< 循环计数
 #if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
-    uint32_t waitCnt    = SOFT_I2C_WAIT_CNT;  ///< 等待计数
-    bool     isFirstBit = true;               ///< 是否第一位
+    uint32_t waitCnt    = p_i2c->waitCnt;  ///< 等待计数
+    bool     isFirstBit = true;            ///< 是否第一位
 #endif
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH); // 开启线与
     for (loopCnt = 0; loopCnt < 8; loopCnt++) {
@@ -368,6 +365,7 @@ static soft_i2c_err_t soft_i2c_comm(P_SOFT_I2C_T p_i2c, P_SOFT_I2C_MSG_T p_msg) 
     // 1. 判忙
     if (soft_i2c_is_busy(p_i2c)) {
         p_i2c->i2cSta = SOFT_I2C_BUSY;
+        soft_i2c_stop(p_i2c);
         return SOFT_I2C_ERR_BUSY;
     }
     // 2. 发送开始信号
@@ -435,6 +433,7 @@ static soft_i2c_err_t soft_i2c_comm(P_SOFT_I2C_T p_i2c, P_SOFT_I2C_MSG_T p_msg) 
  * @brief 软件模拟 I2C 初始化
  * 
  * @param [in] p_i2c         I2C结构体指针
+ * @param [in] waitCnt       超时计数(时钟延展使能时有意义)
  * 
  * @return uint32_t
  *  @retval 0 成功, 其他值 失败 @ref SOFT_I2C_ERR_CODE
@@ -444,7 +443,7 @@ static soft_i2c_err_t soft_i2c_comm(P_SOFT_I2C_T p_i2c, P_SOFT_I2C_MSG_T p_msg) 
  *    
  * @endcode
  */
-soft_i2c_err_t soft_i2c_init(P_SOFT_I2C_T p_i2c) {
+soft_i2c_err_t soft_i2c_init(P_SOFT_I2C_T p_i2c, uint32_t waitCnt) {
     // 1. 参数检查
     if (p_i2c == NULL) {
         return SOFT_I2C_ERR_PARAM;
@@ -467,6 +466,10 @@ soft_i2c_err_t soft_i2c_init(P_SOFT_I2C_T p_i2c) {
     soft_i2c_set_od_mode(&p_i2c->sda);
     soft_i2c_write_gpio(&p_i2c->scl, SOFT_I2C_LEVEL_HIGH);
     soft_i2c_write_gpio(&p_i2c->sda, SOFT_I2C_LEVEL_HIGH);
+#if defined(__SOFT_I2C_CLOCK_STRECH_EN__)
+    // 4. 修改超时计数
+    p_i2c->waitCnt = waitCnt;
+#endif
     p_i2c->isInit = true;
     return SOFT_I2C_ERR_OK;
 }

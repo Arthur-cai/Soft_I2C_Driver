@@ -44,7 +44,6 @@
 #define SOFT_I2C_NACK            SOFT_I2C_LEVEL_HIGH    ///< I2C非应答信号(高电平)
 #define SOFT_I2C_WRITE           (0U)                   ///< 写操作
 #define SOFT_I2C_READ            (1U)                   ///< 读操作
-#define SOFT_I2C_WAIT_CNT        (0xFFFU)               ///< 等待计数(用于时钟延展)
 /*
  * @}
 */
